@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="author" content="gxii,xx.wand@gmail.com"><title>linux下vsftpd服务搭建 · gxii's blog</title><meta name="description" content="前阵子因为负责的项目要做接口，需要给其他开发单位部署FTP服务，用来上传文件。折腾了2天，总算搞定了，遇到的坑也不少，记下来方便日后查看，也方便其他人参考查阅。
+先画个重点不同的liunx，和vsftpd的版本下，安装和配置有所不同，但总体还是差不多的。过程中主要注意这几点:  
+
+linux防火墙"><meta name="keywords" content="Hexo,HTML,CSS,java,full-stack"><meta content="#f5f5f5" name="msapplication-navbutton-color"><meta content="#f5f5f5" name="theme-color"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="renderer" content="webkit"><link rel="short icon" href="/images/favicon.png" type="image/x-icon"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/blog_basic.css"><link rel="stylesheet" href="/css/font-awesome.min.css"><link rel="alternate" type="application/atom+xml" title="ATOM 1.0" href="/atom.xml"></head><body><div class="sidebar animated fadeInDown"><div class="logo-title"><div class="title"><img src="/images/logo@2x.png" style="width:127px;"><h3 title=""><a href="/">gxii's blog</a></h3><div class="description"><p>乍见之欢 久处不厌</p></div></div></div><ul class="social-links"><li><a href="http://instagram.com/gxii_"><i class="fa fa-instagram"></i></a></li><li><a href="http://weibo.com/137908080"><i class="fa fa-weibo"></i></a></li><li><a href="http://github.com/thatxx"><i class="fa fa-github"></i></a></li></ul><div class="footer"><a target="_blank" href="/"><span>Theme by </span></a><a href="https://www.caicai.me"> CaiCai </a><span>&</span><a href="https://github.com/Ben02/hexo-theme-Anatole"> Ben</a><div class="by_farbox"><a href="https://hexo.io/zh-cn/" target="_blank">Proudly published with Hexo&#65281;</a></div></div></div><div class="main"><div class="page-top animated fadeInDown"><div class="nav"><li><a href="/">首页</a></li><li><a href="/archives">归档</a></li><li><a href="/links">友链</a></li><li><a href="/about">关于</a></li></div><div class="information"><div class="back_btn"><li><a onclick="window.history.go(-1)" class="fa fa-chevron-left"> </a></li></div><div class="avatar"><img src="/images/avatar.png"></div></div></div><div class="autopagerize_page_element"><div class="content"><div class="post-page"><div class="post animated fadeInDown"><div class="post-title"><h3><a>linux下vsftpd服务搭建</a></h3></div><div class="post-content"><p>前阵子因为负责的项目要做接口，需要给其他开发单位部署FTP服务，用来上传文件。<br>折腾了2天，总算搞定了，遇到的坑也不少，记下来方便日后查看，也方便其他人参考查阅。</p>
+<h3 id="先画个重点"><a href="#先画个重点" class="headerlink" title="先画个重点"></a>先画个重点</h3><p>不同的liunx，和vsftpd的版本下，安装和配置有所不同，但总体还是差不多的。<br>过程中主要注意这几点:  </p>
+<ol>
+<li>linux防火墙的端口开放，这个没什么难度，根据系统安装的防火墙来设置就行（firewall、setliunx、各种云服务器后台）   </li>
+<li>被动模式的设置  </li>
+<li>外网映射，这个主要是在内网部署测试环境时用到，生产环境有固定公网ip就不用这样  </li>
+</ol>
+<p>搭建后服务端连接失败从这几点去处理一般就能解决了。</p>
+<h3 id="FTP协议"><a href="#FTP协议" class="headerlink" title="FTP协议"></a>FTP协议</h3><p>FTP是基于TCP协议，连接时客户端与服务端都需要用到两个端口,一个命令端口和一个数据端口。根据连接建立的过程，可以将FTP的传输方式区分为主动模式和被动模式。</p>
+<h5 id="主动模式"><a href="#主动模式" class="headerlink" title="主动模式"></a>主动模式</h5><p>主动模式就是FTP服务器主动去连接客户端。<br>具体过程是：</p>
+<ol>
+<li>客户端从任何大于1024的端口到FTP服务器的命令端口（21），发送用户名和密码登录  </li>
+<li>客户端登陆成功后，需要读取列表或者存取数据时，客户端随机开放一个端口大于1024的端口，发送PORT命令到FTP服务器的命令端口（21），告诉FTP服务器客户端采用主动模式和开放的端口  </li>
+<li>FTP服务器收到PORT主动模式命令和端口号后，通过FTP服务器的数据端口（20）和客户端开放的端口建立连接，发送数据  </li>
+</ol>
+<h5 id="被动模式"><a href="#被动模式" class="headerlink" title="被动模式"></a>被动模式</h5><p>被动模式就是反过来，客户端主动去连接FTP服务器。<br>具体过程是：</p>
+<ol>
+<li>客户端从任何大于1024的端口到FTP服务器的命令端口（21），发送用户名和密码登录  </li>
+<li>客户端登陆成功后，需要读取列表或者存取数据时，发送PASV命令到FTP服务器的21端口，告诉FTP服务器客户端采用被动模式  </li>
+<li>FTP 服务器收到PASV被动模式命令后，服务器在本地随机开放一个端口（1024 以上），然后把开放的端口告诉客户端，客户端再连接到FTP服务器开放的端口进行数据传输 </li>
+</ol>
+<h5 id="主动模式与被动模式的选择"><a href="#主动模式与被动模式的选择" class="headerlink" title="主动模式与被动模式的选择"></a>主动模式与被动模式的选择</h5><p>主动模式和被动模式的选择主要看FTP服务器和客户端所处的网络环境。<br>无论是主动模式还是被动模式，被动等待数据连接的一方，需要开放对应防火墙的端口。如果等待连接的端口被防火墙拦截，那么连接就无法建立。<br>当FTP服务器采用主动模式时，客户端会在随机开放一个端口等待连接，而往往这个随机端口是没有在防火墙中开放的。这会导致连接无法建立，对于客户端来说需要设置防火墙，体验不好。而且由于公网IP地址有限，如果FTP服务器处于NAT网关后面（也就是局域网中），来自外网的客户端请求经过NAT网关转发到服务器上时，FTP服务器认为这个网关就是就是FTP客户端，返回IP地址时会返回内网的IP，同样导致连接无法建立。<br>因此，FTP服务采用被动模式，设定被动模式的端口以及对防火墙开放，对于客户端来说，连接就很方便和可靠。</p>
+<h3 id="安装和配置vsftp"><a href="#安装和配置vsftp" class="headerlink" title="安装和配置vsftp"></a>安装和配置vsftp</h3><p>首先是vsftpd服务本体的安装（wget、apt-get也行）<br><code>yum install -y vsftpd</code><br>安装db4、db4-utils（Berkeley DB工具，用来生成虚拟用户认证文件）<br>centos经测试不需要，自带了<br><code>yum  install db4 db4-utils</code></p>
+<h5 id="增加虚拟用户账户"><a href="#增加虚拟用户账户" class="headerlink" title="增加虚拟用户账户"></a>增加虚拟用户账户</h5><ul>
+<li>建立虚拟用户属主，不需密码，限制登陆<br><code>useradd –d /home/vsftpduser –s /sbin/nologin vsftpduser</code>  </li>
+<li>修改虚拟用户属主目录权限<br><code>chmod 755 /home/vsftpduser</code>  </li>
+<li>建立ftp目录  分别为anno user_a user_b<br><code>mkdir -p /uploadfiles/anon /uploadfiles/user_a /uploadfiles/user_b</code>  </li>
+<li>修改文件夹属主为当前用户<br><code>chown admin:admin /uploadfiles/anon  /uploadfiles/user_a /uploadfiles/user_b</code>  </li>
+<li>修改匿名目录权限<br><code>chmod 777 /uploadfiles/anon</code>  </li>
+<li>检查目录状态<br><code>ll /uploadfiles/</code>  </li>
+</ul>
+<h5 id="用户密码设置"><a href="#用户密码设置" class="headerlink" title="用户密码设置"></a>用户密码设置</h5><ul>
+<li><p>创建用户名密码文件<br><code>vi /etc/vsftpd/vusers.list</code>  </p>
+<ul>
+<li>密码文件内容（账号密码分上下两行）  <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">user_a  </span><br><span class="line">pw_user_a  </span><br><span class="line">user_b  </span><br><span class="line">pw_user_b    </span><br><span class="line">admin</span><br><span class="line">pw_admin</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>生成用户名密码数据库文件<br><code>db_load -T -t hash -f /etc/vsftpd/vusers.list /etc/vsftpd/vusers.db</code>  </p>
+</li>
+<li><p>配置用户数据源<br><code>vi /etc/pam.d/vsftpd</code><br>将原来内容全部注释（开头加#）, 新添加两行, 注意vusers文件不添加后缀名.db  </p>
+<ul>
+<li><p>注释部分  </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">#%PAM-1.0  </span><br><span class="line">#session optional pam_keyinit.so force revoke  </span><br><span class="line">#auth required pam_listfile.so item=user sense=deny    file=/etc/vsftpd/ftpusers onerr=succeed  </span><br><span class="line">#auth required pam_shells.so  </span><br><span class="line">#auth include password-auth  </span><br><span class="line">#account include password-auth  </span><br><span class="line">#session required pam_loginuid.so  </span><br><span class="line">#session include password-auth</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新增部分</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">auth required pam_userdb.so db=/etc/vsftpd/vusers  </span><br><span class="line">account required pam_userdb.so db=/etc/vsftpd/vusers</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+<h5 id="配置虚拟用户权限"><a href="#配置虚拟用户权限" class="headerlink" title="配置虚拟用户权限"></a>配置虚拟用户权限</h5><ul>
+<li><p>为不同用户创建不同的配置文件<br><code>vi /etc/vsftpd/vusers_conf/user_a</code>  </p>
+<ul>
+<li><p>配置一般虚拟用户（user_a user_b）  </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">#设定根目录  </span><br><span class="line">local_root=/uploadfiles/user_a  </span><br><span class="line">#设定权限,不拥有和代理系统用于同样的权限  </span><br><span class="line">virtual_use_local_privs=NO  </span><br><span class="line">#设定写权限  </span><br><span class="line">write_enable=YES  </span><br><span class="line">#设定权限:可以上传文件  </span><br><span class="line">anon_upload_enable=YES  </span><br><span class="line">#设定权限:可以新建目录  </span><br><span class="line">anon_mkdir_write_enable=YES  </span><br><span class="line">#设定权限:不能删除/重命名文件   </span><br><span class="line">anon_other_write_enable=NO  </span><br><span class="line">#设定权限:可以浏览目录下的文件  </span><br><span class="line">anon_world_readable_only=YES  </span><br><span class="line">#设定上传文件权限  </span><br><span class="line">anon_umask=022</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>配置高级虚拟用户（admin）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#设定根目录  </span><br><span class="line">local_root=/uploadfiles  </span><br><span class="line">#设置虚拟用户拥有和代理系统用户同样的权限  </span><br><span class="line">virtual_use_local_privs=YES  </span><br><span class="line">#设定上传文件权限  </span><br><span class="line">anon_umask=022</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li><p>配置允许用户跳出主目录的用户列表<br>建议为空,列表内用户可以查看非FTP目录的文件,需要跳出的直接输入用户名即可，一行一个<br><code>touch /etc/vsftpd/chroot_list</code>  </p>
+</li>
+</ul>
+<h5 id="vsftpd核心配置"><a href="#vsftpd核心配置" class="headerlink" title="vsftpd核心配置"></a>vsftpd核心配置</h5><ul>
+<li><p>配置vsftpd 核心配置文件<br><code>vi /etc/vsftpd/vsftpd.conf</code>  </p>
+<ul>
+<li><p>修改文本内容  </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">#关闭匿名用户访问  </span><br><span class="line">anonymous_enable=NO  </span><br><span class="line">#设置禁止用户跳出主目录  </span><br><span class="line">chroot_local_user=YES  </span><br><span class="line">#指定pam 服务名称, 和/etc/pam.d 目录下的文件vsftpd 保持一致  </span><br><span class="line">pam_service_name=vsftpd  </span><br><span class="line">#设置运行本地用户登录,不设置的话, 虚拟用户不能登录  </span><br><span class="line">local_enable=YES  </span><br><span class="line">#关闭ipv6  </span><br><span class="line">listen=YES  </span><br><span class="line">listen_ipv6=NO</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>尾部新增文本内容  </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">#开启虚拟用户登录  </span><br><span class="line">guest_enable=YES  </span><br><span class="line">#设置虚拟用户代理系统用户名  </span><br><span class="line">guest_username=vsftpduser  </span><br><span class="line">//ftp_username=ftp  </span><br><span class="line">#设置默认登录路径  </span><br><span class="line">local_root=/uploadfiles/anon  </span><br><span class="line">#设置具体用户配置文件目录  </span><br><span class="line">user_config_dir=/etc/vsftpd/vusers_conf  </span><br><span class="line">#设置用户限速（4Mbps）  </span><br><span class="line">local_max_rate=500000  </span><br><span class="line">anon_max_rate=500000  </span><br><span class="line">#设置最大客户端数  </span><br><span class="line">max_clients=10  </span><br><span class="line">#开启ftp被动模式  </span><br><span class="line">pasv_enable=YES  </span><br><span class="line">#设定PASV 端口下限  </span><br><span class="line">pasv_min_port=7101  </span><br><span class="line">#设定PASV 端口上限  </span><br><span class="line">pasv_max_port=7102  </span><br><span class="line">#设置目录写权限  </span><br><span class="line">allow_writeable_chroot=YES  </span><br><span class="line">#修改默认端口  </span><br><span class="line">listen_port=7100  </span><br><span class="line">#设置返回地址  </span><br><span class="line">pasv_address=118.89.36.219</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+</ul>
+<h5 id="其他系统配置"><a href="#其他系统配置" class="headerlink" title="其他系统配置"></a>其他系统配置</h5><ul>
+<li><p>修改/etc/services<br><code>vi /etc/services</code><br>修改ftp项： </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ftp             7100/tcp  </span><br><span class="line">ftp             7100/udp</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>加载内核ip_conntrack_ftp（经测试centos不需要）<br><code>modprobe ip_conntrack_ftp</code><br><code>#modprobe ip_nat_ftp</code>  </p>
+</li>
+<li>开放防火墙端口（经测试centos不需要）<br><code>firewall-cmd --zone=public --add-port=7100/tcp --permanent</code><br><code>firewall-cmd --zone=public --add-port=7100/tcp --permanent</code>  </li>
+<li>重启防火墙（经测试centos不需要）<br><code>firewall-cmd --reload</code>  </li>
+<li>配置selinux（经测试不需要）<br><code>setsebool ftpd_full_access on</code>    </li>
+<li>启动服务器<br><code>service vsftpd start</code>  </li>
+<li>增加开机自启动<br><code>systemctl enable vsftpd.service</code>  </li>
+</ul>
+<h5 id="遇到的错误处理"><a href="#遇到的错误处理" class="headerlink" title="遇到的错误处理"></a>遇到的错误处理</h5><ul>
+<li>425 Security: Bad IP connecting<br><code>vi /etc/vsftpd/vsftpd.conf</code><br>添加：pasv_promiscuous=YES  </li>
+<li>修改防火墙规则<br><code>vi /etc/sysconfig/iptables</code><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-A INPUT -p tcp -m state --state NEW -m tcp --dport 7100:7102 -j ACCEPT</span><br><span class="line">-A INPUT -m state --state NEW -m tcp -p tcp --dport 7100 -j ACCEPT</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="关于花生壳内网穿透"><a href="#关于花生壳内网穿透" class="headerlink" title="关于花生壳内网穿透"></a>关于花生壳内网穿透</h3><p>使用花生壳等类似的工具进行内网穿透时，要注意，将被动模式的端口全都设置成和花生壳服务映射的端口一样，也就是说让客户端访问花生壳的端口和FTP服务的端口一致，这样就能实现端口转发。  </p>
+<h3 id="EOF"><a href="#EOF" class="headerlink" title="EOF"></a>EOF</h3></div><div class="post-footer"><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2017-11-15</span><i class="fa fa-comment-o"></i><a href="/2017/11/15/linux下vsftpd服务搭建/#comments">评论</a><i class="fa fa-tag"></i><a href="/categories/linux/" title="linux" class="tag">linux </a><a href="/tags/ftp-linux/" title="ftp linux" class="tag">ftp linux </a></div></div></div></div><div class="share"><div class="evernote"><a href="javascript:(function(){EN_CLIP_HOST='http://www.evernote.com';try{var%20x=document.createElement('SCRIPT');x.type='text/javascript';x.src=EN_CLIP_HOST+'/public/bookmarkClipper.js?'+(new%20Date().getTime()/100000);document.getElementsByTagName('head')[0].appendChild(x);}catch(e){location.href=EN_CLIP_HOST+'/clip.action?url='+encodeURIComponent(location.href)+'&amp;title='+encodeURIComponent(document.title);}})();" ref="nofollow" target="_blank" class="fa fa-bookmark"></a></div><div class="weibo"><a href="javascript:void((function(s,d,e){try{}catch(e){}var f='http://service.weibo.com/share/share.php?',u=d.location.href,p=['url=',e(u),'&amp;title=',e(d.title),'&amp;appkey=2924220432'].join('');function a(){if(!window.open([f,p].join(''),'mb',['toolbar=0,status=0,resizable=1,width=620,height=450,left=',(s.width-620)/2,',top=',(s.height-450)/2].join('')))u.href=[f,p].join('');};if(/Firefox/.test(navigator.userAgent)){setTimeout(a,0)}else{a()}})(screen,document,encodeURIComponent));" class="fa fa-weibo"></a></div><div class="twitter"><a href="http://twitter.com/home?status=,http://yoursite.com/2017/11/15/linux下vsftpd服务搭建/,gxii's blog,linux下vsftpd服务搭建,;" class="fa fa-twitter"></a></div></div><div class="pagination"><ul class="clearfix"><li class="next pagbuttons"><a role="navigation" href="/2017/11/12/hello-world/" title="Hello World" class="btn">下一篇</a></li></ul></div><a id="comments"></a><div id="disqus_thread"></div><script>var disqus_shortname = 'gxii';
+var disqus_identifier = '2017/11/15/linux下vsftpd服务搭建/';
+var disqus_title = 'linux下vsftpd服务搭建';
+var disqus_url = 'http://yoursite.com/2017/11/15/linux下vsftpd服务搭建/';
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><script id="dsq-count-scr" src="//gxii.disqus.com/count.js" async></script></div></div></div></div><script src="/js/jquery.js"></script><script src="/js/jquery-migrate-1.2.1.min.js"></script><script src="/js/jquery.appear.js"></script></body></html>
