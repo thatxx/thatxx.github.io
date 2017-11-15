@@ -10,13 +10,13 @@ linux防火墙"><meta name="keywords" content="Hexo,HTML,CSS,java,full-stack"><m
 </ol>
 <p>搭建后服务端连接失败从这几点去处理一般就能解决了。</p>
 <h3 id="FTP协议"><a href="#FTP协议" class="headerlink" title="FTP协议"></a>FTP协议</h3><p>FTP是基于TCP协议，连接时客户端与服务端都需要用到两个端口,一个命令端口和一个数据端口。根据连接建立的过程，可以将FTP的传输方式区分为主动模式和被动模式。</p>
-<h5 id="主动模式"><a href="#主动模式" class="headerlink" title="主动模式"></a>主动模式</h5><p>主动模式就是FTP服务器主动去连接客户端。<br>具体过程是：</p>
+<h5 id="主动模式"><a href="#主动模式" class="headerlink" title="主动模式"></a>主动模式</h5><p>主动模式就是FTP服务器主动去连接客户端。<br><img src="/images/FTP主动模式.jpg" alt="alt FTP主动模式"><br>具体过程是：</p>
 <ol>
 <li>客户端从任何大于1024的端口到FTP服务器的命令端口（21），发送用户名和密码登录  </li>
 <li>客户端登陆成功后，需要读取列表或者存取数据时，客户端随机开放一个端口大于1024的端口，发送PORT命令到FTP服务器的命令端口（21），告诉FTP服务器客户端采用主动模式和开放的端口  </li>
 <li>FTP服务器收到PORT主动模式命令和端口号后，通过FTP服务器的数据端口（20）和客户端开放的端口建立连接，发送数据  </li>
 </ol>
-<h5 id="被动模式"><a href="#被动模式" class="headerlink" title="被动模式"></a>被动模式</h5><p>被动模式就是反过来，客户端主动去连接FTP服务器。<br>具体过程是：</p>
+<h5 id="被动模式"><a href="#被动模式" class="headerlink" title="被动模式"></a>被动模式</h5><p>被动模式就是反过来，客户端主动去连接FTP服务器。<br><img src="/images/FTP被动模式.jpg" alt="alt FTP被动模式"><br>具体过程是：</p>
 <ol>
 <li>客户端从任何大于1024的端口到FTP服务器的命令端口（21），发送用户名和密码登录  </li>
 <li>客户端登陆成功后，需要读取列表或者存取数据时，发送PASV命令到FTP服务器的21端口，告诉FTP服务器客户端采用被动模式  </li>
