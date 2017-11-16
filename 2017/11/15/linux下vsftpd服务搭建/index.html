@@ -8,7 +8,7 @@ linux防火墙"><meta name="keywords" content="Hexo,HTML,CSS,java,full-stack"><m
 <li>被动模式的设置  </li>
 <li>外网映射，这个主要是在内网部署测试环境时用到，生产环境有固定公网ip就不用这样  </li>
 </ol>
-<p>搭建后服务端连接失败从这几点去处理一般就能解决了。</p>
+<p>搭建后客户端连接失败从这几点去处理一般就能解决了。</p>
 <h3 id="FTP协议"><a href="#FTP协议" class="headerlink" title="FTP协议"></a>FTP协议</h3><p>FTP是基于TCP协议，连接时客户端与服务端都需要用到两个端口,一个命令端口和一个数据端口。根据连接建立的过程，可以将FTP的传输方式区分为主动模式和被动模式。</p>
 <h5 id="主动模式"><a href="#主动模式" class="headerlink" title="主动模式"></a>主动模式</h5><p>主动模式就是FTP服务器主动去连接客户端。<br><img src="/images/FTP主动模式.jpg" alt="alt FTP主动模式"><br>具体过程是：</p>
 <ol>
@@ -22,7 +22,14 @@ linux防火墙"><meta name="keywords" content="Hexo,HTML,CSS,java,full-stack"><m
 <li>客户端登陆成功后，需要读取列表或者存取数据时，发送PASV命令到FTP服务器的21端口，告诉FTP服务器客户端采用被动模式  </li>
 <li>FTP 服务器收到PASV被动模式命令后，服务器在本地随机开放一个端口（1024 以上），然后把开放的端口告诉客户端，客户端再连接到FTP服务器开放的端口进行数据传输 </li>
 </ol>
-<h5 id="主动模式与被动模式的选择"><a href="#主动模式与被动模式的选择" class="headerlink" title="主动模式与被动模式的选择"></a>主动模式与被动模式的选择</h5><p>主动模式和被动模式的选择主要看FTP服务器和客户端所处的网络环境。<br>无论是主动模式还是被动模式，被动等待数据连接的一方，需要开放对应防火墙的端口。如果等待连接的端口被防火墙拦截，那么连接就无法建立。<br>当FTP服务器采用主动模式时，客户端会在随机开放一个端口等待连接，而往往这个随机端口是没有在防火墙中开放的。这会导致连接无法建立，对于客户端来说需要设置防火墙，体验不好。而且由于公网IP地址有限，如果FTP服务器处于NAT网关后面（也就是局域网中），来自外网的客户端请求经过NAT网关转发到服务器上时，FTP服务器认为这个网关就是就是FTP客户端，返回IP地址时会返回内网的IP，同样导致连接无法建立。<br>因此，FTP服务采用被动模式，设定被动模式的端口以及对防火墙开放，对于客户端来说，连接就很方便和可靠。</p>
+<h5 id="主动模式与被动模式的选择"><a href="#主动模式与被动模式的选择" class="headerlink" title="主动模式与被动模式的选择"></a>主动模式与被动模式的选择</h5><p>主动模式和被动模式的选择主要看FTP服务器和客户端所处的网络环境。<br>无论是主动模式还是被动模式，被动等待数据连接的一方，需要开放对应防火墙的端口。如果等待连接的端口被防火墙拦截，那么连接就无法建立。<br>当FTP服务器采用主动模式时，客户端会在随机开放一个端口等待连接，而往往这个随机端口是没有在防火墙中开放的。这会导致连接无法建立，对于客户端来说需要设置防火墙，体验不好。而且由于公网IP地址有限，如果FTP服务器处于NAT服务下（也就是局域网中），来自外网的客户端请求经过NAT服务转发到服务器上时，FTP服务器认为这个网关就是就是FTP客户端，返回IP地址时会返回内网的IP，同样导致连接无法建立。<br>因此，FTP服务采用被动模式，设定被动模式的端口以及对防火墙开放，对于客户端来说，连接就很方便和可靠。</p>
+<h3 id="为什么选择vsftpd"><a href="#为什么选择vsftpd" class="headerlink" title="为什么选择vsftpd"></a>为什么选择vsftpd</h3><p>vsftpd就是Very Secure FTP Daemon的意思，安全性是它的一个最大的特点。vsftpd服务的启动者身份是普通用户，拥有的linux权限比较低，被攻破后入侵者能取得的权限也就比较低。此外，vsftpd支持 chroot() 这个操作，可以将根目录限制在指定目录下，避免用户访问到系统文件、工具。<br>除了安全性外，vsftpd的还支持对FTP的很多功能的配置，比如  </p>
+<ul>
+<li>主动、被动模式下端口的指定</li>
+<li>带宽限制</li>
+<li>通过虚拟账号可以实现不同用户有不同的根目录和文件操作权限</li>
+<li>ipv6支持</li>
+</ul>
 <h3 id="安装和配置vsftp"><a href="#安装和配置vsftp" class="headerlink" title="安装和配置vsftp"></a>安装和配置vsftp</h3><p>首先是vsftpd服务本体的安装（wget、apt-get也行）<br><code>yum install -y vsftpd</code><br>安装db4、db4-utils（Berkeley DB工具，用来生成虚拟用户认证文件）<br>centos经测试不需要，自带了<br><code>yum  install db4 db4-utils</code></p>
 <h5 id="增加虚拟用户账户"><a href="#增加虚拟用户账户" class="headerlink" title="增加虚拟用户账户"></a>增加虚拟用户账户</h5><ul>
 <li>建立虚拟用户属主，不需密码，限制登陆<br><code>useradd –d /home/vsftpduser –s /sbin/nologin vsftpduser</code>  </li>
@@ -96,6 +103,7 @@ linux防火墙"><meta name="keywords" content="Hexo,HTML,CSS,java,full-stack"><m
 </li>
 </ul>
 <h3 id="关于花生壳内网穿透"><a href="#关于花生壳内网穿透" class="headerlink" title="关于花生壳内网穿透"></a>关于花生壳内网穿透</h3><p>使用花生壳等类似的工具进行内网穿透时，要注意，将被动模式的端口全都设置成和花生壳服务映射的端口一样，也就是说让客户端访问花生壳的端口和FTP服务的端口一致，这样就能实现端口转发。  </p>
+<h3 id="客户端推荐"><a href="#客户端推荐" class="headerlink" title="客户端推荐"></a>客户端推荐</h3><p>FileZilla client 的F界面友好，连接信息的输出也很完善，多平台。<br>windows下还可以用FileZilla server来搭建FTP服务器，操作简单，也可以分配用户，以及用户对应的文件夹和权限。</p>
 <h3 id="EOF"><a href="#EOF" class="headerlink" title="EOF"></a>EOF</h3></div><div class="post-footer"><div class="meta"><div class="info"><i class="fa fa-sun-o"></i><span class="date">2017-11-15</span><i class="fa fa-comment-o"></i><a href="/2017/11/15/linux下vsftpd服务搭建/#comments">评论</a><i class="fa fa-tag"></i><a href="/categories/linux/" title="linux" class="tag">linux </a><a href="/tags/ftp-linux/" title="ftp linux" class="tag">ftp linux </a></div></div></div></div><div class="share"><div class="evernote"><a href="javascript:(function(){EN_CLIP_HOST='http://www.evernote.com';try{var%20x=document.createElement('SCRIPT');x.type='text/javascript';x.src=EN_CLIP_HOST+'/public/bookmarkClipper.js?'+(new%20Date().getTime()/100000);document.getElementsByTagName('head')[0].appendChild(x);}catch(e){location.href=EN_CLIP_HOST+'/clip.action?url='+encodeURIComponent(location.href)+'&amp;title='+encodeURIComponent(document.title);}})();" ref="nofollow" target="_blank" class="fa fa-bookmark"></a></div><div class="weibo"><a href="javascript:void((function(s,d,e){try{}catch(e){}var f='http://service.weibo.com/share/share.php?',u=d.location.href,p=['url=',e(u),'&amp;title=',e(d.title),'&amp;appkey=2924220432'].join('');function a(){if(!window.open([f,p].join(''),'mb',['toolbar=0,status=0,resizable=1,width=620,height=450,left=',(s.width-620)/2,',top=',(s.height-450)/2].join('')))u.href=[f,p].join('');};if(/Firefox/.test(navigator.userAgent)){setTimeout(a,0)}else{a()}})(screen,document,encodeURIComponent));" class="fa fa-weibo"></a></div><div class="twitter"><a href="http://twitter.com/home?status=,http://yoursite.com/2017/11/15/linux下vsftpd服务搭建/,gxii's blog,linux下vsftpd服务搭建,;" class="fa fa-twitter"></a></div></div><div class="pagination"><ul class="clearfix"><li class="next pagbuttons"><a role="navigation" href="/2017/11/12/hello-world/" title="Hello World" class="btn">下一篇</a></li></ul></div><a id="comments"></a><div id="disqus_thread"></div><script>var disqus_shortname = 'gxii';
 var disqus_identifier = '2017/11/15/linux下vsftpd服务搭建/';
 var disqus_title = 'linux下vsftpd服务搭建';
